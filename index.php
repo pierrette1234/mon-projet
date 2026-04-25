@@ -1,4 +1,5 @@
 <?php
+session_start();
 require_once 'config.php';
 
 // Récupérer les filières pour le formulaire
@@ -13,6 +14,19 @@ $stmt = $pdo->query("
     ORDER BY e.nom, e.prenom
 ");
 $etudiants = $stmt->fetchAll();
+
+// Afficher les erreurs s'il y en a
+if (isset($_SESSION['errors']) && !empty($_SESSION['errors'])) {
+    echo '<div class="message error">';
+    foreach($_SESSION['errors'] as $error) {
+        echo '<p>' . htmlspecialchars($error) . '</p>';
+    }
+    echo '</div>';
+    
+    // Nettoyer les erreurs après affichage
+    unset($_SESSION['errors']);
+    unset($_SESSION['old_data']);
+}
 ?>
 
 <!DOCTYPE html>
@@ -35,12 +49,16 @@ $etudiants = $stmt->fetchAll();
             <form id="addForm" action="traitement.php" method="POST">
                 <div class="form-group">
                     <label for="nom">Nom *</label>
-                    <input type="text" id="nom" name="nom" class="form-control" required>
+                    <input type="text" id="nom" name="nom" class="form-control" 
+                           value="<?= isset($_SESSION['old_data']['nom']) ? htmlspecialchars($_SESSION['old_data']['nom']) : '' ?>" 
+                           required>
                 </div>
                 
                 <div class="form-group">
                     <label for="prenom">Prénom *</label>
-                    <input type="text" id="prenom" name="prenom" class="form-control" required>
+                    <input type="text" id="prenom" name="prenom" class="form-control" 
+                           value="<?= isset($_SESSION['old_data']['prenom']) ? htmlspecialchars($_SESSION['old_data']['prenom']) : '' ?>" 
+                           required>
                 </div>
                 
                 <div class="form-group">
@@ -48,7 +66,10 @@ $etudiants = $stmt->fetchAll();
                     <select id="filiere_id" name="filiere_id" class="form-control" required>
                         <option value="">Sélectionnez une filière</option>
                         <?php foreach($filieres as $filiere): ?>
-                            <option value="<?= $filiere['id'] ?>"><?= htmlspecialchars($filiere['nom']) ?></option>
+                            <option value="<?= $filiere['id'] ?>" 
+                                <?= (isset($_SESSION['old_data']['filiere_id']) && $_SESSION['old_data']['filiere_id'] == $filiere['id']) ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($filiere['nom']) ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
@@ -59,6 +80,24 @@ $etudiants = $stmt->fetchAll();
 
         <section class="section">
             <h2>Liste des étudiants</h2>
+            
+            <?php 
+            // Afficher les messages de succès/erreur
+            if (isset($_GET['success'])) {
+                $messages = [
+                    1 => 'Étudiant ajouté avec succès !',
+                    2 => 'Étudiant modifié avec succès !',
+                    3 => 'Étudiant supprimé avec succès !'
+                ];
+                if (isset($messages[$_GET['success']])) {
+                    echo '<div class="message success">' . $messages[$_GET['success']] . '</div>';
+                }
+            }
+            
+            if (isset($_GET['error'])) {
+                echo '<div class="message error">Erreur lors de l\'opération. Veuillez réessayer.</div>';
+            }
+            ?>
             
             <?php if (count($etudiants) > 0): ?>
                 <div class="table-container">
